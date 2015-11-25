@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import math
 import sys
 import argparse
 
@@ -60,6 +59,9 @@ if not args.header:
     elif metadat[5]=='Fluorescence':
         WaveRead = metadat[16]
         Ndat = int(metadat[9])
+    elif metadat[5]=='Fluor Polarization':
+        WaveRead = metadat[15]
+        Ndat = int(metadat[8])
     else:
         print "Experiment mode not recognized. Please implement this for : %s" % (metadat[5])
         sys.exit("Experiment type Error.")
