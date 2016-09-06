@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import sys
 import argparse
 
@@ -22,16 +23,16 @@ def convertTimes(strinput, units="sec"):
         # the first one is minutes, second one is seconds
         retval = float(tmp[0]) * 1 + float(tmp[1]) / 60.
         if units=="min":
-            return str(retval)
+            return str(round(retval,4))
         elif units=="sec":
-            return str(retval * 60.0)
+            return str(round(retval * 60.0,4))
 
     elif len(tmp) == 3: # first one is hours, minutes and then seconds
         retval = float(tmp[0]) * 60. + float(tmp[1]) * 1. + float(tmp[2]) / 60.
         if units=="min":
-            return str(retval)
+            return str(round(retval,4))
         elif units=="sec":
-            return str(retval * 60.0)
+            return str(round(retval * 60.0, 4))
 
 
 # number of total lines
@@ -39,16 +40,11 @@ Nlines = len(raw)
 initID  = []
 # find the initial index, this is where the data heaader begins
 for rawid, rawline in enumerate(raw):
-    if 'Plate#1' in rawline:
+    if 'Plate:' in rawline:
         initID = rawid
 
 # get metadata from the 4th line
 metadat = raw[initID].split('\t')
-
-#Debug only
-#Prints out the header information with its corresponding index
-# for i, val in enumerate(metadat):
-#     print "metadat[%d] = %s" % (i, val)
 
 if not args.header:
 
@@ -59,6 +55,9 @@ if not args.header:
     elif metadat[5]=='Fluorescence':
         WaveRead = metadat[16]
         Ndat = int(metadat[9])
+        if metadat[4]=='Spectrum':
+            WaveRead = metadat[12]
+            Ndat = int(metadat[9])
     elif metadat[5]=='Fluor Polarization':
         WaveRead = metadat[15]
         Ndat = int(metadat[8])
@@ -84,8 +83,17 @@ if not args.header:
     # Get column titles
     header   = raw[initID+1].split('\t')
     header   = [header[idx] for idx in goodCol]
-    header[0] = 'Time(%s)' % (time_unit)
-    header[1] = 'Temperature'
+    if metadat[4]=='Kinetic':
+        header[0] = 'Time(%s)' % (time_unit)
+        header[1] = 'Temperature'
+    elif metadat[4]=='Endpoint':
+        header[0] = 'Temperature'
+    elif metadat[4]=='Spectrum':
+        header[0] = 'Wavelength(nm)'
+        header[1] = 'Temperature'
+
+    print "#### HEADER INFO ####"
+    print header
 
     for eachWavelength in range(Nwave):
         
@@ -111,9 +119,14 @@ if not args.header:
             currow = beginIdx + Ndat*eachWavelength + eachRow + spacer
 
             tmp = raw[currow].split('\t')
-            
-            goodtmp = [tmp[eachCol] for eachCol in goodCol]
-            goodtmp[0] = convertTimes(goodtmp[0])
+            try:
+                goodtmp = [tmp[eachCol] for eachCol in goodCol]
+            except IndexError:
+                print "Error at line %d: " % (eachRow+1)
+                print tmp
+
+            if metadat[4]=='Kinetic':
+                goodtmp[0] = convertTimes(goodtmp[0])
 
             for colid,colval in enumerate(goodtmp):
                 fid.write(colval)
@@ -123,8 +136,8 @@ if not args.header:
             fid.write('\n')
 
         fid.close()
-        
-else:
+# debug only, print out header information if flag is args.header is True        
+else: 
     for i,e in enumerate(metadat):
         print "index ===> %d :\t\t %s" % (i,e)
 
